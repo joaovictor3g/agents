@@ -19,6 +19,8 @@ type fakeGit struct {
 	branches      map[string]bool
 	checkedOutAt  map[string]string
 	dirtyDirs     map[string]bool
+	detachedDirs  map[string]bool
+	mergingDirs   map[string]bool
 	mergeConflict bool
 	mergeInFlight bool
 	log           []string
@@ -32,6 +34,8 @@ func newFakeGit() *fakeGit {
 		branches:      map[string]bool{"main": true},
 		checkedOutAt:  map[string]string{},
 		dirtyDirs:     map[string]bool{},
+		detachedDirs:  map[string]bool{},
+		mergingDirs:   map[string]bool{},
 	}
 }
 
@@ -90,6 +94,9 @@ func (g *fakeGit) Merge(branch string) error {
 }
 
 func (g *fakeGit) MergeInProgress() (bool, error) { return g.mergeInFlight, nil }
+
+func (g *fakeGit) DetachedHEAD(dir string) (bool, error)      { return g.detachedDirs[dir], nil }
+func (g *fakeGit) MergeInProgressAt(dir string) (bool, error) { return g.mergingDirs[dir], nil }
 
 type fakePane struct {
 	window string
@@ -259,6 +266,9 @@ func newWorld() *world {
 		WatchPaneCommand: func(name string, interval time.Duration) string {
 			return "watch-pane " + name
 		},
+		// Every provider command is on PATH by default; doctor tests that need a
+		// missing binary override this closure.
+		LookPath: func(string) error { return nil },
 	}
 	return w
 }

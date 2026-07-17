@@ -55,6 +55,7 @@ never interfere with each other.`,
 		newDeleteCmd(printer),
 		newMergeCmd(printer),
 		newStatusCmd(printer),
+		newDoctorCmd(printer),
 		newWatchCmd(printer),
 		newWatchPaneCmd(printer),
 	)
@@ -115,6 +116,7 @@ func buildOrchestrator(printer *ui.Printer) (*orchestrator.Orchestrator, error) 
 		WatchPaneCommand: func(name string, interval time.Duration) string {
 			return watchPaneCommand(session, name, interval)
 		},
+		LookPath: providerInstalled,
 	}, nil
 }
 
