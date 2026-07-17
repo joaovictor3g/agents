@@ -21,9 +21,9 @@ archives:
 
 brews:
   - repository:
-      owner: victordias
+      owner: joaovictor3g
       name: homebrew-tap
-    homepage: https://github.com/victordias/agents
+    homepage: https://github.com/joaovictor3g/agents
     description: Orchestrate parallel AI coding agents in git worktrees and tmux windows
     license: MIT
     dependencies:

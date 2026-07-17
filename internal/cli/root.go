@@ -10,16 +10,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/victordias/agents/internal/config"
-	"github.com/victordias/agents/internal/execx"
-	"github.com/victordias/agents/internal/git"
-	"github.com/victordias/agents/internal/orchestrator"
-	"github.com/victordias/agents/internal/platform"
-	"github.com/victordias/agents/internal/provider"
-	"github.com/victordias/agents/internal/state"
-	"github.com/victordias/agents/internal/tmux"
-	"github.com/victordias/agents/internal/ui"
-	"github.com/victordias/agents/internal/worktree"
+	"github.com/joaovictor3g/agents/internal/config"
+	"github.com/joaovictor3g/agents/internal/execx"
+	"github.com/joaovictor3g/agents/internal/git"
+	"github.com/joaovictor3g/agents/internal/orchestrator"
+	"github.com/joaovictor3g/agents/internal/platform"
+	"github.com/joaovictor3g/agents/internal/provider"
+	"github.com/joaovictor3g/agents/internal/state"
+	"github.com/joaovictor3g/agents/internal/tmux"
+	"github.com/joaovictor3g/agents/internal/ui"
+	"github.com/joaovictor3g/agents/internal/worktree"
 )
 
 // Execute runs the CLI and returns the process exit code.

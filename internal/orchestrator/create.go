@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/victordias/agents/internal/state"
-	"github.com/victordias/agents/internal/templates"
+	"github.com/joaovictor3g/agents/internal/state"
+	"github.com/joaovictor3g/agents/internal/templates"
 )
 
 // CreateOptions configures Create.

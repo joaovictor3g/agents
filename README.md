@@ -47,7 +47,7 @@ review   running   claude     review   /repo/worktrees/review
 
 ```sh
 brew install tmux
-go install github.com/victordias/agents/cmd/agents@latest
+go install github.com/joaovictor3g/agents/cmd/agents@latest
 ```
 
 or build from source:

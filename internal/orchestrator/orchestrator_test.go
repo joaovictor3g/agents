@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/victordias/agents/internal/state"
+	"github.com/joaovictor3g/agents/internal/state"
 )
 
 func TestValidateName(t *testing.T) {

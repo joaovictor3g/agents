@@ -3,8 +3,8 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/victordias/agents/internal/orchestrator"
-	"github.com/victordias/agents/internal/ui"
+	"github.com/joaovictor3g/agents/internal/orchestrator"
+	"github.com/joaovictor3g/agents/internal/ui"
 )
 
 func newStatusCmd(printer *ui.Printer) *cobra.Command {

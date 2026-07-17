@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/victordias/agents/internal/execx"
+	"github.com/joaovictor3g/agents/internal/execx"
 )
 
 // Client runs tmux commands.

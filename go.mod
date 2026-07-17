@@ -1,4 +1,4 @@
-module github.com/victordias/agents
+module github.com/joaovictor3g/agents
 
 go 1.25
 

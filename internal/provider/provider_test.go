@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/victordias/agents/internal/config"
+	"github.com/joaovictor3g/agents/internal/config"
 )
 
 func TestCommandLineNoPrompt(t *testing.T) {

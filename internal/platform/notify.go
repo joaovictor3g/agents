@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/victordias/agents/internal/execx"
+	"github.com/joaovictor3g/agents/internal/execx"
 )
 
 // Notifier posts desktop notifications.

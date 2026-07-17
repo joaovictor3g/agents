@@ -5,7 +5,7 @@ package main
 import (
 	"os"
 
-	"github.com/victordias/agents/internal/cli"
+	"github.com/joaovictor3g/agents/internal/cli"
 )
 
 // version is injected at build time via -ldflags "-X main.version=...".

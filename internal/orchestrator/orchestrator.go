@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/victordias/agents/internal/config"
-	"github.com/victordias/agents/internal/provider"
-	"github.com/victordias/agents/internal/state"
-	"github.com/victordias/agents/internal/ui"
+	"github.com/joaovictor3g/agents/internal/config"
+	"github.com/joaovictor3g/agents/internal/provider"
+	"github.com/joaovictor3g/agents/internal/state"
+	"github.com/joaovictor3g/agents/internal/ui"
 )
 
 // GitClient is the git surface the orchestrator needs.

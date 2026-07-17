@@ -1,7 +1,7 @@
 package orchestrator
 
 import (
-	"github.com/victordias/agents/internal/state"
+	"github.com/joaovictor3g/agents/internal/state"
 )
 
 // AgentInfo is one reconciled row of `agents list`.

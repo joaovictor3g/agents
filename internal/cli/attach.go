@@ -3,7 +3,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/victordias/agents/internal/ui"
+	"github.com/joaovictor3g/agents/internal/ui"
 )
 
 func newAttachCmd(printer *ui.Printer) *cobra.Command {

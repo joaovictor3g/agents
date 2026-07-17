@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/victordias/agents/internal/git"
+	"github.com/joaovictor3g/agents/internal/git"
 )
 
 // MergeOptions configures Merge.

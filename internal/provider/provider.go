@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/victordias/agents/internal/config"
+	"github.com/joaovictor3g/agents/internal/config"
 )
 
 // PromptPlaceholder is replaced with the prompt text inside promptArgs.

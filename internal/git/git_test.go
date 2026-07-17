@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/victordias/agents/internal/execx"
+	"github.com/joaovictor3g/agents/internal/execx"
 )
 
 // These tests run against a real git binary in a temp repository.
