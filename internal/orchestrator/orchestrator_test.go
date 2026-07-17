@@ -343,3 +343,81 @@ func TestStatusReport(t *testing.T) {
 		t.Errorf("agents = %d", len(r.Agents))
 	}
 }
+
+func TestResumeRebuildsDeadWindow(t *testing.T) {
+	w := newWorld()
+	w.git.branches["auth"] = true
+	w.store.state.Add(state.Agent{Name: "auth", Provider: "claude", Branch: "auth", Worktree: "/repo/worktrees/auth"})
+	// Reboot state: worktree on disk, but no tmux session or window.
+
+	if err := w.orch.Resume("auth", false); err != nil {
+		t.Fatal(err)
+	}
+	if !w.tmux.sessions["repo"] {
+		t.Error("session should be recreated")
+	}
+	if _, ok := w.tmux.windows["auth"]; !ok {
+		t.Error("window should be recreated")
+	}
+	if got := w.tmux.sent["auth"]; got != "claude" {
+		t.Errorf("provider command = %q, want %q", got, "claude")
+	}
+	// No new branch: the existing branch is reused, git untouched.
+	if len(w.git.log) != 0 {
+		t.Errorf("git should not be touched when the worktree exists: %v", w.git.log)
+	}
+}
+
+func TestResumeAttachesWhenAlreadyRunning(t *testing.T) {
+	w := newWorld()
+	w.store.state.Add(state.Agent{Name: "auth", Provider: "claude", Branch: "auth", Worktree: "/repo/worktrees/auth"})
+	w.tmux.sessions["repo"] = true
+	w.tmux.windows["auth"] = "claude"
+
+	if err := w.orch.Resume("auth", true); err != nil {
+		t.Fatal(err)
+	}
+	if w.tmux.attached != "repo:auth" {
+		t.Errorf("attached = %q, want repo:auth", w.tmux.attached)
+	}
+	if _, sent := w.tmux.sent["auth"]; sent {
+		t.Error("a running agent must not be relaunched")
+	}
+}
+
+func TestResumeRestoresMissingWorktree(t *testing.T) {
+	w := newWorld()
+	w.git.branches["auth"] = true
+	w.fs.missing["/repo/worktrees/auth"] = true // worktree dir gone, branch remains
+	w.store.state.Add(state.Agent{Name: "auth", Provider: "claude", Branch: "auth", Worktree: "/repo/worktrees/auth"})
+
+	if err := w.orch.Resume("auth", false); err != nil {
+		t.Fatal(err)
+	}
+	if w.git.checkedOutAt["auth"] != "/repo/worktrees/auth" {
+		t.Error("worktree should be re-added for the existing branch")
+	}
+	if _, ok := w.tmux.windows["auth"]; !ok {
+		t.Error("window should be recreated after restoring the worktree")
+	}
+}
+
+func TestResumeFailsWhenBranchGone(t *testing.T) {
+	w := newWorld()
+	w.fs.missing["/repo/worktrees/auth"] = true // worktree gone
+	// branch "auth" does not exist in git
+	w.store.state.Add(state.Agent{Name: "auth", Provider: "claude", Branch: "auth", Worktree: "/repo/worktrees/auth"})
+
+	err := w.orch.Resume("auth", false)
+	if err == nil || !strings.Contains(err.Error(), "no longer exists") {
+		t.Fatalf("err = %v, want branch-gone error", err)
+	}
+}
+
+func TestResumeUnknownAgent(t *testing.T) {
+	w := newWorld()
+	err := w.orch.Resume("ghost", false)
+	if err == nil || !strings.Contains(err.Error(), "unknown agent") {
+		t.Fatalf("err = %v", err)
+	}
+}
