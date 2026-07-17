@@ -33,7 +33,7 @@ review   running   claude     review   /repo/worktrees/review
 
 - [Requirements](#requirements)
 - [Installation](#installation)
-- [Commands](#commands) — [create](#agents-create-name) · [list](#agents-list-alias-ls) · [attach](#agents-attach-name) · [delete](#agents-delete-name-alias-rm) · [merge](#agents-merge-name) · [status](#agents-status) · [doctor](#agents-doctor) · [watch](#agents-watch)
+- [Commands](#commands) — [create](#agents-create-name) · [spawn](#agents-spawn-planmd) · [list](#agents-list-alias-ls) · [attach](#agents-attach-name) · [delete](#agents-delete-name-alias-rm) · [merge](#agents-merge-name) · [status](#agents-status) · [watch](#agents-watch)
 - [Configuration](#configuration)
 - [Prompt templates](#prompt-templates)
 - [How it works](#how-it-works)
@@ -93,6 +93,31 @@ Worth knowing:
 - **Prompts are injected as command-line arguments** (e.g. `claude 'your prompt'`), never typed into a running TUI — so there's no startup race.
 - Names must be flat: letters, digits, `.`, `_`, `-`. No slashes.
 - The worktree root is added to `.git/info/exclude` automatically — worktrees never pollute `git status`, and your tracked `.gitignore` is never touched.
+
+### `agents spawn <plan.md>`
+
+Creates a whole team of agents in one shot from a Markdown plan file, dispatching each one's initial task. Every agent is provisioned through the same path as `agents create` — branch, worktree, tmux window, provider, and injected prompt.
+
+The plan is one second-level heading per agent (the agent name), with bullet lines as that agent's task(s):
+
+```md
+## auth
+- OAuth integration
+
+## payments
+- Stripe billing
+
+## tests
+- Playwright coverage
+```
+
+A level-1 title and any non-bullet prose are ignored; bullets under a heading are joined into that agent's task prompt. Agent names follow the same rules as `create` (letters, digits, `.`, `_`, `-`).
+
+Worth knowing:
+
+- **Each agent uses the default provider** (`defaultProvider` from config). Per-agent provider/template selection is not part of the v1 plan format.
+- **Spawning continues past a failure**: agents created before it keep running, the rest are still attempted, and a `N created, K failed` summary is printed. The command exits non-zero if any agent failed.
+- The plan is rejected up front if it has no headings, a duplicate agent name, an invalid name, or an agent with no tasks.
 
 ### `agents list` (alias: `ls`)
 

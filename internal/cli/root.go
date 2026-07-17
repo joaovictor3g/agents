@@ -49,6 +49,7 @@ never interfere with each other.`,
 	}
 	root.AddCommand(
 		newCreateCmd(printer),
+		newSpawnCmd(printer),
 		newListCmd(printer),
 		newAttachCmd(printer),
 		newResumeCmd(printer),
