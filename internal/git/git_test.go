@@ -152,6 +152,74 @@ func TestMergeConflictDetection(t *testing.T) {
 	}
 }
 
+func TestDetachedHEADInWorktree(t *testing.T) {
+	c := setupRepo(t)
+	run := execx.System{}
+
+	wt := filepath.Join(c.Root(), "worktrees", "feature")
+	if err := c.AddWorktreeNewBranch(wt, "feature", "main"); err != nil {
+		t.Fatal(err)
+	}
+
+	detached, err := c.DetachedHEAD(wt)
+	if err != nil || detached {
+		t.Fatalf("DetachedHEAD on a branch = %v, %v", detached, err)
+	}
+
+	if _, err := run.Output("git", "-C", wt, "checkout", "--detach"); err != nil {
+		t.Fatal(err)
+	}
+	detached, err = c.DetachedHEAD(wt)
+	if err != nil || !detached {
+		t.Fatalf("DetachedHEAD after --detach = %v, %v", detached, err)
+	}
+}
+
+func TestMergeInProgressAtWorktree(t *testing.T) {
+	c := setupRepo(t)
+	run := execx.System{}
+	mustGit := func(dir string, args ...string) {
+		t.Helper()
+		if _, err := run.Output("git", append([]string{"-C", dir}, args...)...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Two branches that both change README.md so a merge inside the worktree
+	// stops on a conflict and leaves MERGE_HEAD behind.
+	wt := filepath.Join(c.Root(), "worktrees", "feature")
+	if err := c.AddWorktreeNewBranch(wt, "feature", "main"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, "README.md"), []byte("feature\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mustGit(wt, "commit", "-am", "feature change")
+
+	if err := os.WriteFile(filepath.Join(c.Root(), "README.md"), []byte("main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mustGit(c.Root(), "commit", "-am", "main change")
+
+	inProgress, err := c.MergeInProgressAt(wt)
+	if err != nil || inProgress {
+		t.Fatalf("MergeInProgressAt before merge = %v, %v", inProgress, err)
+	}
+
+	// Conflicting merge inside the worktree; ignore the non-zero exit.
+	_, _ = run.Output("git", "-C", wt, "merge", "main")
+
+	inProgress, err = c.MergeInProgressAt(wt)
+	if err != nil || !inProgress {
+		t.Fatalf("MergeInProgressAt during merge = %v, %v", inProgress, err)
+	}
+
+	// The main checkout has no merge of its own — the worktree's is isolated.
+	if mainMerge, err := c.MergeInProgress(); err != nil || mainMerge {
+		t.Fatalf("main checkout MergeInProgress = %v, %v", mainMerge, err)
+	}
+}
+
 func TestCurrentBranchDetached(t *testing.T) {
 	c := setupRepo(t)
 	run := execx.System{}

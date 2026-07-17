@@ -31,6 +31,8 @@ type GitClient interface {
 	Checkout(branch string) error
 	Merge(branch string) error
 	MergeInProgress() (bool, error)
+	DetachedHEAD(dir string) (bool, error)
+	MergeInProgressAt(dir string) (bool, error)
 }
 
 // TmuxClient is the tmux surface the orchestrator needs.
@@ -86,6 +88,10 @@ type Orchestrator struct {
 	// WatchPaneCommand builds the shell command a watch pane runs to mirror an
 	// agent's window.
 	WatchPaneCommand func(name string, interval time.Duration) string
+	// LookPath reports whether an executable is resolvable on PATH. It is a
+	// field so doctor's provider check stays testable without depending on the
+	// real PATH of the test host.
+	LookPath func(command string) error
 }
 
 var nameRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)

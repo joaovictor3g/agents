@@ -157,6 +157,20 @@ func (c *Client) IsClean(dir string) (bool, error) {
 	return out == "", nil
 }
 
+// DetachedHEAD reports whether the worktree at dir has HEAD detached (checked
+// out on a commit rather than a branch). symbolic-ref exits 1 with -q when
+// HEAD is not a symbolic ref, which is exactly the detached case.
+func (c *Client) DetachedHEAD(dir string) (bool, error) {
+	_, err := c.run.Output("git", "-C", dir, "symbolic-ref", "--short", "-q", "HEAD")
+	if err != nil {
+		if execx.ExitCode(err) == 1 {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
+}
+
 // Checkout switches the main checkout to branch.
 func (c *Client) Checkout(branch string) error {
 	_, err := c.git("checkout", branch)
@@ -178,12 +192,19 @@ func (c *Client) Merge(branch string) error {
 
 // MergeInProgress reports whether the main checkout has an unfinished merge.
 func (c *Client) MergeInProgress() (bool, error) {
-	gitDir, err := c.git("rev-parse", "--git-dir")
+	return c.MergeInProgressAt(c.root)
+}
+
+// MergeInProgressAt reports whether the worktree at dir has an unfinished
+// merge. Each worktree has its own git directory, so MERGE_HEAD must be
+// resolved relative to that worktree rather than the shared common dir.
+func (c *Client) MergeInProgressAt(dir string) (bool, error) {
+	gitDir, err := c.run.Output("git", "-C", dir, "rev-parse", "--git-dir")
 	if err != nil {
 		return false, err
 	}
 	if !filepath.IsAbs(gitDir) {
-		gitDir = filepath.Join(c.root, gitDir)
+		gitDir = filepath.Join(dir, gitDir)
 	}
 	_, err = os.Stat(filepath.Join(gitDir, "MERGE_HEAD"))
 	if err == nil {

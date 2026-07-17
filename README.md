@@ -33,7 +33,7 @@ review   running   claude     review   /repo/worktrees/review
 
 - [Requirements](#requirements)
 - [Installation](#installation)
-- [Commands](#commands) — [create](#agents-create-name) · [list](#agents-list-alias-ls) · [attach](#agents-attach-name) · [delete](#agents-delete-name-alias-rm) · [merge](#agents-merge-name) · [status](#agents-status) · [watch](#agents-watch)
+- [Commands](#commands) — [create](#agents-create-name) · [list](#agents-list-alias-ls) · [attach](#agents-attach-name) · [delete](#agents-delete-name-alias-rm) · [merge](#agents-merge-name) · [status](#agents-status) · [doctor](#agents-doctor) · [watch](#agents-watch)
 - [Configuration](#configuration)
 - [Prompt templates](#prompt-templates)
 - [How it works](#how-it-works)
@@ -179,6 +179,20 @@ old      dead      claude     old      agents delete old
 ```
 
 Warns on detached HEAD and merges left in progress.
+
+### `agents doctor`
+
+Scans every registered agent and the repository for common problems and prints an actionable fix for each — a missing worktree, a dead tmux window, a provider binary that is no longer on your `PATH`, a detached HEAD, a merge left in progress, or uncommitted changes:
+
+```
+! auth: worktree directory is missing
+  → run `agents resume auth`
+! review: provider command "claude" is not on PATH
+  → install claude or fix your PATH
+```
+
+- Read-only: it never changes anything, so it is always safe to run.
+- Exits **non-zero** when any problem is found and prints `✔ No problems found. All agents are healthy.` (exit `0`) otherwise, so it drops straight into scripts and CI.
 
 ### `agents watch`
 
