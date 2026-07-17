@@ -19,17 +19,21 @@ builds:
 archives:
   - formats: [tar.gz]
 
-brews:
+homebrew_casks:
   - repository:
       owner: joaovictor3g
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: https://github.com/joaovictor3g/agents
     description: Orchestrate parallel AI coding agents in git worktrees and tmux windows
-    license: MIT
     dependencies:
-      - name: tmux
-    test: |
-      system "#{bin}/agents --version"
+      - formula: tmux
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agents"]
+          end
 
 checksum:
   name_template: checksums.txt
