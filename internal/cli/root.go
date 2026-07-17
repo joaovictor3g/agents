@@ -49,6 +49,7 @@ never interfere with each other.`,
 	}
 	root.AddCommand(
 		newCreateCmd(printer),
+		newPlanCmd(printer),
 		newSpawnCmd(printer),
 		newListCmd(printer),
 		newAttachCmd(printer),
@@ -107,6 +108,7 @@ func buildOrchestrator(printer *ui.Printer) (*orchestrator.Orchestrator, error) 
 		Providers: provider.NewRegistry(cfg),
 		UI:        printer,
 		Notifier:  platform.NewNotifier(run),
+		Run:       run,
 		Session:   session,
 		ExcludeWorktrees: func() error {
 			return worktree.EnsureExcluded(commonDir, g.Root(), cfg.WorktreesRoot)

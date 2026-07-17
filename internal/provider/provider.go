@@ -21,6 +21,7 @@ type Provider struct {
 	Command    string
 	Args       []string
 	PromptArgs []string
+	PlanArgs   []string
 }
 
 // Registry holds all configured providers.
@@ -37,6 +38,7 @@ func NewRegistry(cfg *config.Config) Registry {
 			Command:    pc.Command,
 			Args:       pc.Args,
 			PromptArgs: pc.PromptArgs,
+			PlanArgs:   pc.PlanArgs,
 		}
 	}
 	return Registry{providers: providers}
@@ -80,6 +82,22 @@ func (p Provider) CommandLine(prompt string) (string, error) {
 		quoted[i] = ShellQuote(arg)
 	}
 	return strings.Join(quoted, " "), nil
+}
+
+// PlanCommand builds the argv that runs the provider in headless planning mode,
+// with the planning prompt substituted into planArgs. Unlike CommandLine the
+// result is a raw argv (command first), because planning runs the provider
+// directly and captures its stdout rather than typing into a tmux window, so no
+// shell quoting is involved. A provider with no planArgs cannot plan.
+func (p Provider) PlanCommand(prompt string) ([]string, error) {
+	if len(p.PlanArgs) == 0 {
+		return nil, fmt.Errorf("provider %q does not support planning (set planArgs in its config)", p.Name)
+	}
+	argv := append([]string{p.Command}, p.Args...)
+	for _, arg := range p.PlanArgs {
+		argv = append(argv, strings.ReplaceAll(arg, PromptPlaceholder, prompt))
+	}
+	return argv, nil
 }
 
 var safeArg = regexp.MustCompile(`^[a-zA-Z0-9@%+=:,./_-]+$`)

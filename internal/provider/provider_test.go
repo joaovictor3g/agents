@@ -60,6 +60,30 @@ func TestCommandLineStaticArgs(t *testing.T) {
 	}
 }
 
+func TestPlanCommandInjectsPrompt(t *testing.T) {
+	p := Provider{Name: "claude", Command: "claude", PlanArgs: []string{"-p", "{{prompt}}"}}
+	got, err := p.PlanCommand("decompose this")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"claude", "-p", "decompose this"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("arg %d: got %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestPlanCommandWithoutPlanArgsFails(t *testing.T) {
+	p := Provider{Name: "custom", Command: "custom", PromptArgs: []string{"{{prompt}}"}}
+	if _, err := p.PlanCommand("hi"); err == nil {
+		t.Fatal("expected error for provider without planArgs")
+	}
+}
+
 func TestRegistryResolve(t *testing.T) {
 	r := NewRegistry(config.Default())
 	p, err := r.Resolve("claude")

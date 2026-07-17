@@ -69,6 +69,13 @@ type FS interface {
 	DirExists(path string) bool
 }
 
+// CommandRunner runs a subprocess and returns its trimmed stdout. The planner
+// uses it to invoke a provider in headless mode; it is an interface so planning
+// is testable without spawning a real AI CLI.
+type CommandRunner interface {
+	Output(name string, args ...string) (string, error)
+}
+
 // Orchestrator wires the collaborators for all use-cases.
 type Orchestrator struct {
 	Git       GitClient
@@ -79,6 +86,8 @@ type Orchestrator struct {
 	Providers provider.Registry
 	UI        *ui.Printer
 	Notifier  Notifier
+	// Run executes provider CLIs in headless mode for `agents plan`.
+	Run CommandRunner
 	// Session is the resolved tmux session name for this repository.
 	Session string
 	// ExcludeWorktrees idempotently hides the worktree root from git status.
