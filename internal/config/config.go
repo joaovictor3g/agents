@@ -5,7 +5,7 @@
 // Trust boundary: the repo-local .agents.yaml is attacker-controlled whenever
 // you run agents inside a repository you did not write. It may therefore select
 // among providers and tune non-executable settings, but it may NOT define or
-// override a provider's command/args/promptArgs — those come only from the
+// override a provider's command/args/promptArgs/planArgs — those come only from the
 // built-in defaults and your own global config. Without this rule a cloned repo
 // could ship a provider whose command is `sh -c '<anything>'` and have it run
 // automatically on `agents create`.
@@ -28,6 +28,11 @@ type ProviderConfig struct {
 	// PromptArgs are appended when an initial prompt is given; the literal
 	// {{prompt}} placeholder is replaced with the prompt text.
 	PromptArgs []string `yaml:"promptArgs"`
+	// PlanArgs invoke the provider in headless mode for `agents plan`: they must
+	// make the CLI print its answer to stdout and exit (e.g. `claude -p`). The
+	// {{prompt}} placeholder is replaced with the planning prompt. A provider
+	// with no PlanArgs cannot be used for planning.
+	PlanArgs []string `yaml:"planArgs"`
 }
 
 // Config is the fully resolved configuration.
@@ -77,9 +82,9 @@ func Default() *Config {
 	return &Config{
 		DefaultProvider: "claude",
 		Providers: map[string]ProviderConfig{
-			"claude": {Command: "claude", PromptArgs: []string{"{{prompt}}"}},
-			"codex":  {Command: "codex", PromptArgs: []string{"{{prompt}}"}},
-			"gemini": {Command: "gemini", PromptArgs: []string{"-i", "{{prompt}}"}},
+			"claude": {Command: "claude", PromptArgs: []string{"{{prompt}}"}, PlanArgs: []string{"-p", "{{prompt}}"}},
+			"codex":  {Command: "codex", PromptArgs: []string{"{{prompt}}"}, PlanArgs: []string{"exec", "{{prompt}}"}},
+			"gemini": {Command: "gemini", PromptArgs: []string{"-i", "{{prompt}}"}, PlanArgs: []string{"-p", "{{prompt}}"}},
 		},
 		WorktreesRoot: "worktrees",
 	}
@@ -157,8 +162,9 @@ func readFile(path string) (*fileConfig, error) {
 
 // merge overlays src onto dst. When trusted is false, src is treated as
 // attacker-controlled repo config: it may still select a default provider and
-// tune non-executable settings, but provider command/args/promptArgs are
-// ignored so a repo can never dictate what command runs on `agents create`.
+// tune non-executable settings, but provider command/args/promptArgs/planArgs
+// are ignored so a repo can never dictate what command runs on `agents create`
+// or `agents plan`.
 func merge(dst *Config, src fileConfig, trusted bool) {
 	if src.DefaultProvider != "" {
 		dst.DefaultProvider = src.DefaultProvider
@@ -174,6 +180,9 @@ func merge(dst *Config, src fileConfig, trusted bool) {
 			}
 			if p.PromptArgs != nil {
 				existing.PromptArgs = p.PromptArgs
+			}
+			if p.PlanArgs != nil {
+				existing.PlanArgs = p.PlanArgs
 			}
 			dst.Providers[name] = existing
 		}

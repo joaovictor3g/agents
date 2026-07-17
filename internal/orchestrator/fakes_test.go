@@ -231,12 +231,40 @@ func (n *fakeNotifier) Notify(title, message string) {
 	n.messages = append(n.messages, message)
 }
 
+// fakeRunner returns canned stdout for successive Output calls, so planning is
+// tested without a real provider CLI. outputs[i] (and errs[i], if set) answer
+// the i-th call; once outputs is exhausted the last entry is reused. Each call's
+// argv is recorded for assertions.
+type fakeRunner struct {
+	outputs []string
+	errs    []error
+	calls   [][]string
+}
+
+func (r *fakeRunner) Output(name string, args ...string) (string, error) {
+	i := len(r.calls)
+	r.calls = append(r.calls, append([]string{name}, args...))
+	var err error
+	if i < len(r.errs) {
+		err = r.errs[i]
+	}
+	switch {
+	case i < len(r.outputs):
+		return r.outputs[i], err
+	case len(r.outputs) > 0:
+		return r.outputs[len(r.outputs)-1], err
+	default:
+		return "", err
+	}
+}
+
 type world struct {
 	git      *fakeGit
 	tmux     *fakeTmux
 	store    *fakeStore
 	fs       *fakeFS
 	notifier *fakeNotifier
+	runner   *fakeRunner
 	orch     *Orchestrator
 	out      *bytes.Buffer
 }
@@ -248,6 +276,7 @@ func newWorld() *world {
 		store:    &fakeStore{},
 		fs:       &fakeFS{missing: map[string]bool{}},
 		notifier: &fakeNotifier{},
+		runner:   &fakeRunner{},
 		out:      &bytes.Buffer{},
 	}
 	cfg := config.Default()
@@ -260,6 +289,7 @@ func newWorld() *world {
 		Providers:        provider.NewRegistry(cfg),
 		UI:               ui.NewFor(w.out, w.out, false),
 		Notifier:         w.notifier,
+		Run:              w.runner,
 		Session:          "repo",
 		ExcludeWorktrees: func() error { return nil },
 		WorktreePath:     func(name string) string { return "/repo/worktrees/" + name },

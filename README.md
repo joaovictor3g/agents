@@ -33,7 +33,7 @@ review   running   claude     review   /repo/worktrees/review
 
 - [Requirements](#requirements)
 - [Installation](#installation)
-- [Commands](#commands) — [create](#agents-create-name) · [spawn](#agents-spawn-planmd) · [list](#agents-list-alias-ls) · [attach](#agents-attach-name) · [delete](#agents-delete-name-alias-rm) · [merge](#agents-merge-name) · [status](#agents-status) · [watch](#agents-watch)
+- [Commands](#commands) — [create](#agents-create-name) · [plan](#agents-plan-request) · [spawn](#agents-spawn-planmd) · [list](#agents-list-alias-ls) · [attach](#agents-attach-name) · [delete](#agents-delete-name-alias-rm) · [merge](#agents-merge-name) · [status](#agents-status) · [watch](#agents-watch)
 - [Configuration](#configuration)
 - [Prompt templates](#prompt-templates)
 - [How it works](#how-it-works)
@@ -93,6 +93,40 @@ Worth knowing:
 - **Prompts are injected as command-line arguments** (e.g. `claude 'your prompt'`), never typed into a running TUI — so there's no startup race.
 - Names must be flat: letters, digits, `.`, `_`, `-`. No slashes.
 - The worktree root is added to `.git/info/exclude` automatically — worktrees never pollute `git status`, and your tracked `.gitignore` is never touched.
+
+### `agents plan <request>`
+
+Asks a provider to decompose a high-level feature request into a small team of specialized agents, and emits the result as a Markdown plan. **It only generates a plan — it never creates agents.** Review (and edit) the plan, then hand it to `agents spawn` to create the team.
+
+```sh
+agents plan "Implement Stripe subscriptions" > plan.md
+# review / edit plan.md
+agents spawn plan.md
+```
+
+The output is exactly the format `agents spawn` reads — one `## <name>` heading per agent, with `- <task>` bullets:
+
+```md
+## auth
+- OAuth login and session handling
+
+## payments
+- Stripe billing and webhooks
+
+## tests
+- End-to-end coverage for the new flows
+```
+
+| Flag | Description |
+|---|---|
+| `-p, --provider <name>` | Provider to plan with. Default: `defaultProvider` from config. |
+| `-o, --out <file>` | Write the plan to a file instead of stdout. |
+
+Worth knowing:
+
+- **Planning runs the provider in headless mode** (e.g. `claude -p`, `codex exec`), configured per provider via `planArgs` — the headless counterpart to `promptArgs`. A provider with no `planArgs` can't be used for planning and says so.
+- **The plan must parse.** Its output is validated through the same parser `spawn` uses; if the model wraps it in prose or a code fence, `plan` strips the fence and retries once before giving up with the raw output shown.
+- With no `--out` the plan goes to stdout with no other chatter, so `agents plan … > plan.md` captures just the plan.
 
 ### `agents spawn <plan.md>`
 
@@ -277,12 +311,16 @@ providers:
     args: []                     # arguments always passed
     promptArgs: ["{{prompt}}"]   # appended when a prompt is injected;
                                  # {{prompt}} is replaced with the text
+    planArgs: ["-p", "{{prompt}}"] # headless invocation for `agents plan`
+                                 # (must print to stdout and exit)
   codex:
     command: codex
     promptArgs: ["{{prompt}}"]
+    planArgs: ["exec", "{{prompt}}"]
   gemini:
     command: gemini
     promptArgs: ["-i", "{{prompt}}"]
+    planArgs: ["-p", "{{prompt}}"]
   aider:                         # example custom provider
     command: aider
     promptArgs: ["--message", "{{prompt}}"]
@@ -305,7 +343,7 @@ templates:
 notifications: true
 ```
 
-A provider without `promptArgs` still works — but `--template`/`--prompt` will fail with a clear error rather than gamble on typing into its TUI.
+A provider without `promptArgs` still works — but `--template`/`--prompt` will fail with a clear error rather than gamble on typing into its TUI. Likewise, a provider without `planArgs` works for everything except `agents plan`, which needs a headless (print-to-stdout) invocation.
 
 ## Prompt templates
 
