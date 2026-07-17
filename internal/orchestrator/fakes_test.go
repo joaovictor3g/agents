@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/joaovictor3g/agents/internal/config"
 	"github.com/joaovictor3g/agents/internal/git"
@@ -90,10 +91,18 @@ func (g *fakeGit) Merge(branch string) error {
 
 func (g *fakeGit) MergeInProgress() (bool, error) { return g.mergeInFlight, nil }
 
+type fakePane struct {
+	window string
+	title  string
+}
+
 type fakeTmux struct {
 	sessions map[string]bool
 	windows  map[string]string
 	sent     map[string]string
+	panes    map[string]*fakePane // pane id -> pane
+	nextPane int
+	layouts  []string
 	attached string
 	log      []string
 }
@@ -103,7 +112,53 @@ func newFakeTmux() *fakeTmux {
 		sessions: map[string]bool{},
 		windows:  map[string]string{},
 		sent:     map[string]string{},
+		panes:    map[string]*fakePane{},
 	}
+}
+
+func (t *fakeTmux) PanesInWindow(session, window string) (map[string]string, error) {
+	out := map[string]string{}
+	for id, p := range t.panes {
+		if p.window == window {
+			out[id] = p.title
+		}
+	}
+	return out, nil
+}
+
+func (t *fakeTmux) NewWindowRunning(session, window, command string) (string, error) {
+	t.windows[window] = "agents"
+	t.nextPane++
+	id := fmt.Sprintf("%%%d", t.nextPane)
+	t.panes[id] = &fakePane{window: window}
+	t.log = append(t.log, "new-window-running "+window)
+	return id, nil
+}
+
+func (t *fakeTmux) SplitWindow(session, window, command string) (string, error) {
+	t.nextPane++
+	id := fmt.Sprintf("%%%d", t.nextPane)
+	t.panes[id] = &fakePane{window: window}
+	t.log = append(t.log, "split "+window)
+	return id, nil
+}
+
+func (t *fakeTmux) KillPane(paneID string) error {
+	delete(t.panes, paneID)
+	t.log = append(t.log, "kill-pane "+paneID)
+	return nil
+}
+
+func (t *fakeTmux) SetPaneTitle(paneID, title string) error {
+	if p, ok := t.panes[paneID]; ok {
+		p.title = title
+	}
+	return nil
+}
+
+func (t *fakeTmux) SelectLayout(session, window, layout string) error {
+	t.layouts = append(t.layouts, layout)
+	return nil
 }
 
 func (t *fakeTmux) HasSession(name string) bool { return t.sessions[name] }
@@ -201,6 +256,9 @@ func newWorld() *world {
 		Session:          "repo",
 		ExcludeWorktrees: func() error { return nil },
 		WorktreePath:     func(name string) string { return "/repo/worktrees/" + name },
+		WatchPaneCommand: func(name string, interval time.Duration) string {
+			return "watch-pane " + name
+		},
 	}
 	return w
 }

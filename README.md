@@ -155,6 +155,32 @@ old      dead      claude     old      agents delete old
 
 Warns on detached HEAD and merges left in progress.
 
+### `agents watch`
+
+Opens a **read-only dashboard** that mirrors every agent side by side in a
+tiled grid, so you can watch the whole team at once:
+
+```
+┌ auth ─────────────┐ ┌ tests ────────────┐
+│ (claude working…) │ │ (codex working…)  │
+└───────────────────┘ └───────────────────┘
+┌ review ───────────┐
+│ (claude working…) │
+└───────────────────┘
+```
+
+| Flag | Description |
+|---|---|
+| `-i, --interval <dur>` | Refresh interval for each mirror pane. Default: `2s`. |
+
+- The panes are **mirrors**: the agents' real windows are never touched. To
+  interact with an agent, use `agents attach <name>`.
+- The dashboard reconciles on every run — create or delete agents, then run
+  `agents watch` again and the grid re-syncs (new panes added, gone agents
+  removed).
+- It lives in a reserved `_watch` tmux window; dismiss it by closing the
+  window (`Ctrl-b &`). Nothing to clean up.
+
 ## Configuration
 
 Configuration is layered; later layers override earlier ones:

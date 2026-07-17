@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/joaovictor3g/agents/internal/config"
 	"github.com/joaovictor3g/agents/internal/provider"
@@ -41,6 +42,13 @@ type TmuxClient interface {
 	Windows(session string) (map[string]string, error)
 	SendCommand(session, window, command string) error
 	Attach(session, window string) error
+
+	PanesInWindow(session, window string) (map[string]string, error)
+	NewWindowRunning(session, window, command string) (string, error)
+	SplitWindow(session, window, command string) (string, error)
+	KillPane(paneID string) error
+	SetPaneTitle(paneID, title string) error
+	SelectLayout(session, window, layout string) error
 }
 
 // StateStore persists the agent registry.
@@ -75,11 +83,16 @@ type Orchestrator struct {
 	ExcludeWorktrees func() error
 	// WorktreePath maps an agent name to its absolute worktree path.
 	WorktreePath func(name string) string
+	// WatchPaneCommand builds the shell command a watch pane runs to mirror an
+	// agent's window.
+	WatchPaneCommand func(name string, interval time.Duration) string
 }
 
 var nameRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
 
 // ValidateName enforces names usable as a branch, directory, and tmux window.
+// Names must start with an alphanumeric, which also guarantees they can never
+// collide with the reserved "_watch" dashboard window (see Watch).
 func ValidateName(name string) error {
 	if !nameRe.MatchString(name) {
 		return fmt.Errorf("invalid agent name %q: use letters, digits, '.', '_' or '-' (no slashes, must start with a letter or digit)", name)

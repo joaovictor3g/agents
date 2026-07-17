@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/joaovictor3g/agents/internal/execx"
@@ -100,4 +101,88 @@ func (c *Client) Attach(session, window string) error {
 		return err
 	}
 	return c.run.Interactive("tmux", "attach-session", "-t", "="+session)
+}
+
+// PanesInWindow returns pane id -> pane title for every pane in the window,
+// used to reconcile the watch dashboard. A missing window yields an empty map.
+func (c *Client) PanesInWindow(session, window string) (map[string]string, error) {
+	out, err := c.run.Output("tmux", "list-panes", "-t", target(session, window),
+		"-F", "#{pane_id}\t#{pane_title}")
+	if err != nil {
+		return map[string]string{}, nil
+	}
+	panes := make(map[string]string)
+	for _, line := range strings.Split(out, "\n") {
+		if line == "" {
+			continue
+		}
+		id, title, ok := strings.Cut(line, "\t")
+		if ok {
+			panes[id] = title
+		}
+	}
+	return panes, nil
+}
+
+// NewWindowRunning creates a detached window running command and returns the
+// id of its pane.
+func (c *Client) NewWindowRunning(session, window, command string) (string, error) {
+	return c.run.Output("tmux", "new-window", "-d", "-P", "-F", "#{pane_id}",
+		"-t", "="+session+":", "-n", window, command)
+}
+
+// SplitWindow splits the window with a new pane running command and returns
+// the new pane's id.
+func (c *Client) SplitWindow(session, window, command string) (string, error) {
+	return c.run.Output("tmux", "split-window", "-d", "-P", "-F", "#{pane_id}",
+		"-t", target(session, window), command)
+}
+
+// KillPane kills a single pane by id.
+func (c *Client) KillPane(paneID string) error {
+	_, err := c.run.Output("tmux", "kill-pane", "-t", paneID)
+	return err
+}
+
+// SetPaneTitle tags a pane with a title, used as the reconciliation key.
+func (c *Client) SetPaneTitle(paneID, title string) error {
+	_, err := c.run.Output("tmux", "select-pane", "-t", paneID, "-T", title)
+	return err
+}
+
+// SelectLayout applies a named layout (e.g. "tiled") to the window.
+func (c *Client) SelectLayout(session, window, layout string) error {
+	_, err := c.run.Output("tmux", "select-layout", "-t", target(session, window), layout)
+	return err
+}
+
+// CapturePane returns the visible text of the target window's pane.
+func (c *Client) CapturePane(session, window string) (string, error) {
+	return c.run.Output("tmux", "capture-pane", "-p", "-t", target(session, window))
+}
+
+// PaneSize returns the width and height of the pane the caller runs in,
+// resolved via $TMUX_PANE. It falls back to 80x24 outside tmux.
+func (c *Client) PaneSize() (width, height int) {
+	pane := os.Getenv("TMUX_PANE")
+	if pane == "" {
+		return 80, 24
+	}
+	out, err := c.run.Output("tmux", "display-message", "-p", "-t", pane, "-F", "#{pane_width}\t#{pane_height}")
+	if err != nil {
+		return 80, 24
+	}
+	w, h, ok := strings.Cut(out, "\t")
+	if !ok {
+		return 80, 24
+	}
+	width, _ = strconv.Atoi(w)
+	height, _ = strconv.Atoi(h)
+	if width <= 0 {
+		width = 80
+	}
+	if height <= 0 {
+		height = 24
+	}
+	return width, height
 }

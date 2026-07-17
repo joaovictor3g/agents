@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -52,6 +54,8 @@ never interfere with each other.`,
 		newDeleteCmd(printer),
 		newMergeCmd(printer),
 		newStatusCmd(printer),
+		newWatchCmd(printer),
+		newWatchPaneCmd(printer),
 	)
 	return root
 }
@@ -104,7 +108,28 @@ func buildOrchestrator(printer *ui.Printer) (*orchestrator.Orchestrator, error) 
 		WorktreePath: func(name string) string {
 			return worktree.Path(g.Root(), cfg.WorktreesRoot, name)
 		},
+		WatchPaneCommand: func(name string, interval time.Duration) string {
+			return watchPaneCommand(session, name, interval)
+		},
 	}, nil
+}
+
+// watchPaneCommand builds the shell command a dashboard pane runs: this very
+// binary in its hidden mirror mode. It falls back to "agents" on PATH if the
+// executable path cannot be resolved.
+func watchPaneCommand(session, name string, interval time.Duration) string {
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "agents"
+	}
+	parts := []string{
+		provider.ShellQuote(exe),
+		"__watch-pane",
+		provider.ShellQuote(session),
+		provider.ShellQuote(name),
+		"--interval", interval.String(),
+	}
+	return strings.Join(parts, " ")
 }
 
 type osFS struct{}

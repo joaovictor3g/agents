@@ -96,3 +96,54 @@ func (p *Printer) Table(headers []string, rows [][]string) {
 	}
 	tw.Flush()
 }
+
+// RenderFrame lays out one watch-dashboard pane: a header row over the tail of
+// body, every line truncated to width and the whole frame capped to height
+// rows. It is pure so it can be golden-tested; the caller handles the screen
+// clear and color.
+func RenderFrame(header, body string, width, height int) string {
+	if width < 1 {
+		width = 1
+	}
+	if height < 1 {
+		height = 1
+	}
+	lines := make([]string, 0, height)
+	lines = append(lines, fitLine(header, width))
+
+	bodyRows := height - 1
+	if bodyRows > 0 {
+		content := strings.Split(strings.TrimRight(body, "\n"), "\n")
+		if len(content) > bodyRows {
+			content = content[len(content)-bodyRows:] // tail: show the latest output
+		}
+		for _, line := range content {
+			lines = append(lines, fitLine(line, width))
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// fitLine truncates or right-pads a line to exactly width runes.
+func fitLine(s string, width int) string {
+	runes := []rune(s)
+	if len(runes) > width {
+		return string(runes[:width])
+	}
+	return s + strings.Repeat(" ", width-len(runes))
+}
+
+// WatchFrame clears the screen and draws a dashboard pane. header is painted
+// in reverse video so it reads as a title bar.
+func (p *Printer) WatchFrame(header, body string, width, height int) {
+	frame := RenderFrame(header, body, width, height)
+	first, rest, _ := strings.Cut(frame, "\n")
+	painted := first
+	if p.color {
+		painted = "\x1b[7m" + first + ansiReset // reverse video
+	}
+	if rest != "" {
+		painted += "\n" + rest
+	}
+	fmt.Fprint(p.out, "\x1b[H\x1b[2J"+painted)
+}
