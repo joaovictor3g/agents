@@ -104,16 +104,18 @@ func (c *Client) DeleteBranch(name string, force bool) error {
 	return err
 }
 
-// AddWorktree checks out an existing branch into a new worktree.
+// AddWorktree checks out an existing branch into a new worktree. The "--"
+// stops option parsing so path and branch can never be read as flags.
 func (c *Client) AddWorktree(path, branch string) error {
-	_, err := c.git("worktree", "add", path, branch)
+	_, err := c.git("worktree", "add", "--", path, branch)
 	return err
 }
 
 // AddWorktreeNewBranch creates a branch from base and checks it out into a
-// new worktree.
+// new worktree. The "--" stops option parsing so a base ref such as "--foo"
+// is treated as a commit-ish, never an argument to git.
 func (c *Client) AddWorktreeNewBranch(path, branch, base string) error {
-	_, err := c.git("worktree", "add", "-b", branch, path, base)
+	_, err := c.git("worktree", "add", "-b", branch, "--", path, base)
 	return err
 }
 

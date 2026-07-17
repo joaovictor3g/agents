@@ -108,6 +108,17 @@ func TestCreateUsesBaseFlag(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsOptionLikeBase(t *testing.T) {
+	w := newWorld()
+	err := w.orch.Create(CreateOptions{Name: "auth", Base: "--upload-pack=touch /tmp/pwned"})
+	if err == nil || !strings.Contains(err.Error(), "cannot start with '-'") {
+		t.Fatalf("err = %v, want rejection of option-like base", err)
+	}
+	if len(w.git.log) != 0 {
+		t.Errorf("nothing should be touched when base is rejected: %v", w.git.log)
+	}
+}
+
 func TestCreateAttachFlag(t *testing.T) {
 	w := newWorld()
 	if err := w.orch.Create(CreateOptions{Name: "auth", Attach: true}); err != nil {

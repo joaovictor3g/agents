@@ -1,6 +1,14 @@
 // Package config loads agents configuration from three layers, each
 // overriding the previous: built-in defaults, the global config file at
 // $XDG_CONFIG_HOME/agents/config.yaml, and .agents.yaml at the repo root.
+//
+// Trust boundary: the repo-local .agents.yaml is attacker-controlled whenever
+// you run agents inside a repository you did not write. It may therefore select
+// among providers and tune non-executable settings, but it may NOT define or
+// override a provider's command/args/promptArgs — those come only from the
+// built-in defaults and your own global config. Without this rule a cloned repo
+// could ship a provider whose command is `sh -c '<anything>'` and have it run
+// automatically on `agents create`.
 package config
 
 import (
@@ -77,9 +85,12 @@ func Default() *Config {
 	}
 }
 
-// Load builds the resolved configuration for a repository.
-func Load(repoRoot string) (*Config, error) {
+// Load builds the resolved configuration for a repository. It also returns any
+// warnings worth surfacing to the user, such as executable provider settings
+// that a repo-local .agents.yaml tried (and was not allowed) to define.
+func Load(repoRoot string) (*Config, []string, error) {
 	cfg := Default()
+	var warnings []string
 
 	globalDir := GlobalDir()
 	globalTemplates := filepath.Join(globalDir, "templates")
@@ -88,10 +99,12 @@ func Load(repoRoot string) (*Config, error) {
 	if globalDir != "" {
 		fc, err := readFile(filepath.Join(globalDir, "config.yaml"))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if fc != nil {
-			merge(cfg, *fc)
+			// The global config is written by the user, so it is trusted to
+			// define which commands providers launch.
+			merge(cfg, *fc, true)
 			if fc.Templates.Path != "" {
 				globalTemplates = resolvePath(fc.Templates.Path, globalDir)
 			}
@@ -101,10 +114,17 @@ func Load(repoRoot string) (*Config, error) {
 	if repoRoot != "" {
 		fc, err := readFile(filepath.Join(repoRoot, ".agents.yaml"))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if fc != nil {
-			merge(cfg, *fc)
+			// The repo config is untrusted: it may select and tune providers
+			// but never define what command they run.
+			merge(cfg, *fc, false)
+			if len(fc.Providers) > 0 {
+				warnings = append(warnings, fmt.Sprintf(
+					"ignored provider command/args from repo .agents.yaml (define providers in %s instead)",
+					filepath.Join(GlobalDir(), "config.yaml")))
+			}
 			if fc.Templates.Path != "" {
 				repoTemplates = resolvePath(fc.Templates.Path, repoRoot)
 			}
@@ -117,7 +137,7 @@ func Load(repoRoot string) (*Config, error) {
 	if globalTemplates != "" {
 		cfg.TemplateDirs = append(cfg.TemplateDirs, globalTemplates)
 	}
-	return cfg, nil
+	return cfg, warnings, nil
 }
 
 func readFile(path string) (*fileConfig, error) {
@@ -135,22 +155,28 @@ func readFile(path string) (*fileConfig, error) {
 	return &fc, nil
 }
 
-func merge(dst *Config, src fileConfig) {
+// merge overlays src onto dst. When trusted is false, src is treated as
+// attacker-controlled repo config: it may still select a default provider and
+// tune non-executable settings, but provider command/args/promptArgs are
+// ignored so a repo can never dictate what command runs on `agents create`.
+func merge(dst *Config, src fileConfig, trusted bool) {
 	if src.DefaultProvider != "" {
 		dst.DefaultProvider = src.DefaultProvider
 	}
-	for name, p := range src.Providers {
-		existing := dst.Providers[name]
-		if p.Command != "" {
-			existing.Command = p.Command
+	if trusted {
+		for name, p := range src.Providers {
+			existing := dst.Providers[name]
+			if p.Command != "" {
+				existing.Command = p.Command
+			}
+			if p.Args != nil {
+				existing.Args = p.Args
+			}
+			if p.PromptArgs != nil {
+				existing.PromptArgs = p.PromptArgs
+			}
+			dst.Providers[name] = existing
 		}
-		if p.Args != nil {
-			existing.Args = p.Args
-		}
-		if p.PromptArgs != nil {
-			existing.PromptArgs = p.PromptArgs
-		}
-		dst.Providers[name] = existing
 	}
 	if src.Tmux.Session != "" {
 		dst.Session = src.Tmux.Session

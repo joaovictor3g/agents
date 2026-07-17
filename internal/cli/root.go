@@ -72,9 +72,12 @@ func buildOrchestrator(printer *ui.Printer) (*orchestrator.Orchestrator, error) 
 		return nil, err
 	}
 
-	cfg, err := config.Load(g.Root())
+	cfg, warnings, err := config.Load(g.Root())
 	if err != nil {
 		return nil, err
+	}
+	for _, w := range warnings {
+		printer.Warn("%s", w)
 	}
 
 	tm := tmux.New(run)
