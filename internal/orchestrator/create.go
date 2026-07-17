@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/joaovictor3g/agents/internal/state"
@@ -23,6 +24,9 @@ type CreateOptions struct {
 // partially created agent can always be cleaned up with `agents delete`.
 func (o *Orchestrator) Create(opts CreateOptions) error {
 	if err := ValidateName(opts.Name); err != nil {
+		return err
+	}
+	if err := validateBase(opts.Base); err != nil {
 		return err
 	}
 
@@ -127,6 +131,21 @@ func (o *Orchestrator) Create(opts CreateOptions) error {
 
 	if opts.Attach {
 		return o.Tmux.Attach(o.Session, opts.Name)
+	}
+	return nil
+}
+
+// validateBase rejects an empty-but-nonblank or option-like --base value. A
+// leading '-' is refused because no legitimate git revision starts with one,
+// and it is the shape an argument-injection attempt against `git worktree add`
+// would take. The git layer also passes base after a "--" separator, so this
+// is defense in depth plus a clearer error than git would give.
+func validateBase(base string) error {
+	if base == "" {
+		return nil
+	}
+	if strings.HasPrefix(base, "-") {
+		return fmt.Errorf("invalid --base %q: a base ref cannot start with '-'", base)
 	}
 	return nil
 }

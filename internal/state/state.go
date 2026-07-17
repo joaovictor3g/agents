@@ -73,9 +73,11 @@ func (st *Store) Load() (*State, error) {
 	return &s, nil
 }
 
-// Save writes the registry atomically.
+// Save writes the registry atomically. The registry holds only local metadata,
+// but it is per-user tool state, so the directory and file are created private
+// (0700/0600) rather than world-readable.
 func (st *Store) Save(s *State) error {
-	if err := os.MkdirAll(filepath.Dir(st.Path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(st.Path), 0o700); err != nil {
 		return fmt.Errorf("creating registry directory: %w", err)
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
@@ -83,7 +85,7 @@ func (st *Store) Save(s *State) error {
 		return err
 	}
 	tmp := st.Path + ".tmp"
-	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(tmp, append(data, '\n'), 0o600); err != nil {
 		return fmt.Errorf("writing agent registry: %w", err)
 	}
 	if err := os.Rename(tmp, st.Path); err != nil {
