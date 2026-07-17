@@ -421,3 +421,76 @@ func TestResumeUnknownAgent(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestResumeAllRebuildsStoppedSkipsRunning(t *testing.T) {
+	w := newWorld()
+	for _, name := range []string{"auth", "tests", "docs"} {
+		w.git.branches[name] = true
+		w.store.state.Add(state.Agent{Name: name, Provider: "claude", Branch: name, Worktree: "/repo/worktrees/" + name})
+	}
+	// "auth" is already up; only "tests" and "docs" need rebuilding.
+	w.tmux.windows["auth"] = "claude"
+
+	if err := w.orch.ResumeAll(); err != nil {
+		t.Fatal(err)
+	}
+	if !w.tmux.sessions["repo"] {
+		t.Error("session should be present")
+	}
+	for _, name := range []string{"tests", "docs"} {
+		if _, ok := w.tmux.windows[name]; !ok {
+			t.Errorf("window %s should be recreated", name)
+		}
+		if got := w.tmux.sent[name]; got != "claude" {
+			t.Errorf("%s provider command = %q, want claude", name, got)
+		}
+	}
+	// The already-running agent is never relaunched.
+	if _, sent := w.tmux.sent["auth"]; sent {
+		t.Error("running agent must not be relaunched")
+	}
+	if !strings.Contains(w.out.String(), "Resumed 2, 1 already running, 0 failed.") {
+		t.Errorf("summary missing or wrong:\n%s", w.out.String())
+	}
+}
+
+func TestResumeAllEmptyRegistry(t *testing.T) {
+	w := newWorld()
+	if err := w.orch.ResumeAll(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(w.out.String(), "nothing to resume") {
+		t.Errorf("empty registry should report nothing to resume:\n%s", w.out.String())
+	}
+	if w.tmux.sessions["repo"] {
+		t.Error("no session should be created for an empty registry")
+	}
+}
+
+func TestResumeAllContinuesPastFailure(t *testing.T) {
+	w := newWorld()
+	// "broken" has a missing worktree and no branch to restore from, so it fails;
+	// "auth" and "docs" are healthy and must still be resumed around it.
+	w.git.branches["auth"] = true
+	w.git.branches["docs"] = true
+	w.fs.missing["/repo/worktrees/broken"] = true
+	w.store.state.Add(state.Agent{Name: "auth", Provider: "claude", Branch: "auth", Worktree: "/repo/worktrees/auth"})
+	w.store.state.Add(state.Agent{Name: "broken", Provider: "claude", Branch: "broken", Worktree: "/repo/worktrees/broken"})
+	w.store.state.Add(state.Agent{Name: "docs", Provider: "claude", Branch: "docs", Worktree: "/repo/worktrees/docs"})
+
+	err := w.orch.ResumeAll()
+	if err == nil || !strings.Contains(err.Error(), "failed to resume 1 of 3") {
+		t.Fatalf("err = %v, want partial-failure summary error", err)
+	}
+	for _, name := range []string{"auth", "docs"} {
+		if _, ok := w.tmux.windows[name]; !ok {
+			t.Errorf("healthy agent %s should be resumed despite the failure", name)
+		}
+	}
+	if _, ok := w.tmux.windows["broken"]; ok {
+		t.Error("broken agent should not have a window")
+	}
+	if !strings.Contains(w.out.String(), "Resumed 2, 0 already running, 1 failed.") {
+		t.Errorf("summary should reflect the failure:\n%s", w.out.String())
+	}
+}

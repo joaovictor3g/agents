@@ -117,15 +117,18 @@ Clean up `dead` and `broken` agents with `agents delete <name>`.
 
 Switches to the agent's tmux window. Inside tmux it uses `switch-client` (seamless, no nesting); outside tmux it attaches to the session.
 
-### `agents resume <name>`
+### `agents resume [name]`
 
 Brings a stopped agent back to life. A reboot (or `tmux kill-server`) destroys the tmux window and the AI process, but the branch, worktree, and registry entry all survive — so there is no need to create a new agent, which would only spawn a new branch.
 
 `resume` rebuilds the missing pieces **in place**, reusing the same branch and worktree: it re-adds the worktree if its directory is gone, recreates the tmux window, and relaunches the provider. It is **idempotent** — an agent whose window is still alive is simply re-attached, never duplicated.
 
+Pass a single agent name, or `--all` to recover every registered agent at once after a reboot. Exactly one of the two is required — combining a name with `--all` is an error.
+
 | Flag | Description |
 |---|---|
-| `-a, --attach` | Jump to the agent's window after resuming. |
+| `-a, --attach` | Jump to the agent's window after resuming (single-agent only). |
+| `--all` | Resume every registered agent. Already-running agents are skipped, failures are reported, and the run continues to a summary rather than aborting on the first error. |
 
 ```console
 $ agents resume auth          # after a reboot
@@ -133,6 +136,17 @@ $ agents resume auth          # after a reboot
 ✓ Restarted claude
 
 Agent resumed. Run agents attach auth to join it.
+```
+
+```console
+$ agents resume --all         # recover the whole team at once
+✓ Recreated tmux window myrepo:tests
+✓ Restarted claude
+Agent auth is already running.
+✓ Recreated tmux window myrepo:docs
+✓ Restarted claude
+
+Resumed 2, 1 already running, 0 failed.
 ```
 
 The AI conversation itself is not restored (that state lives in the provider, not in `agents`); the provider launches fresh, and you can use its own resume flag (e.g. `claude --continue`) from inside the window if you need the prior session.
