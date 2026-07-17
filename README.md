@@ -36,7 +36,7 @@ review   running   claude     review   /repo/worktrees/review
 
 ## Requirements
 
-- macOS (first-class) or Linux
+- macOS (developed and tested here) or Linux (supported, unit-tested in CI, not yet exercised end-to-end)
 - `git` 2.20+
 - `tmux`
 - at least one AI CLI on your `PATH` (`claude`, `codex`, `gemini`, …)
@@ -45,12 +45,22 @@ review   running   claude     review   /repo/worktrees/review
 
 ## Installation
 
+**Homebrew** (macOS and Linux — installs `tmux` automatically):
+
 ```sh
-brew install tmux
+brew install joaovictor3g/tap/agents
+```
+
+`agents` ships as a Homebrew *cask*, so use the full `tap/agents` path above.
+`brew install agents` on its own will not find it.
+
+**Go** (requires `tmux` on your `PATH` separately):
+
+```sh
 go install github.com/joaovictor3g/agents/cmd/agents@latest
 ```
 
-or build from source:
+**From source:**
 
 ```sh
 make build        # ./bin/agents
