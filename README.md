@@ -117,6 +117,26 @@ Clean up `dead` and `broken` agents with `agents delete <name>`.
 
 Switches to the agent's tmux window. Inside tmux it uses `switch-client` (seamless, no nesting); outside tmux it attaches to the session.
 
+### `agents resume <name>`
+
+Brings a stopped agent back to life. A reboot (or `tmux kill-server`) destroys the tmux window and the AI process, but the branch, worktree, and registry entry all survive — so there is no need to create a new agent, which would only spawn a new branch.
+
+`resume` rebuilds the missing pieces **in place**, reusing the same branch and worktree: it re-adds the worktree if its directory is gone, recreates the tmux window, and relaunches the provider. It is **idempotent** — an agent whose window is still alive is simply re-attached, never duplicated.
+
+| Flag | Description |
+|---|---|
+| `-a, --attach` | Jump to the agent's window after resuming. |
+
+```console
+$ agents resume auth          # after a reboot
+✓ Recreated tmux window myrepo:auth
+✓ Restarted claude
+
+Agent resumed. Run agents attach auth to join it.
+```
+
+The AI conversation itself is not restored (that state lives in the provider, not in `agents`); the provider launches fresh, and you can use its own resume flag (e.g. `claude --continue`) from inside the window if you need the prior session.
+
 ### `agents delete <name>` (alias: `rm`)
 
 Stops the AI session and removes the tmux window and worktree.
