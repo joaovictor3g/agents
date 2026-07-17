@@ -37,3 +37,24 @@ homebrew_casks:
 
 checksum:
   name_template: checksums.txt
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '(?i)^.*\b(add|feat)\b'
+      order: 0
+    - title: Fixes
+      regexp: '(?i)^.*\b(fix|clarify)\b'
+      order: 1
+    - title: Other
+      order: 999
