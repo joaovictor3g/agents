@@ -1,0 +1,35 @@
+version: 2
+
+project_name: agents
+
+builds:
+  - main: ./cmd/agents
+    binary: agents
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+
+brews:
+  - repository:
+      owner: victordias
+      name: homebrew-tap
+    homepage: https://github.com/victordias/agents
+    description: Orchestrate parallel AI coding agents in git worktrees and tmux windows
+    license: MIT
+    dependencies:
+      - name: tmux
+    test: |
+      system "#{bin}/agents --version"
+
+checksum:
+  name_template: checksums.txt
